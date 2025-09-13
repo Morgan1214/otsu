@@ -3,10 +3,13 @@
 #include "game.h"
 
 int main(int argc, char* argv[]) {
-  if (argc < 3) {
-    printf("Usage: %s <path/to/.osu file> <path/to/.ogg file>\n", argv[0]);
+    char beatmap_path[100], soundtrack_path[100];
+  if (argc != 2) {
+    printf("Usage: %s <Test directory>\n", argv[0]);
     return 0;
   }
-  return game_run(argv[1], argv[2]);
+  snprintf(beatmap_path, 100, "%s/beatmap.otsu", argv[1]);
+  snprintf(soundtrack_path, 100, "%s/audio.ogg", argv[1]);
+  return game_run(beatmap_path, soundtrack_path);
 }
 

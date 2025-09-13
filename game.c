@@ -687,7 +687,7 @@ int game_run(const char* osu_path, const char* ogg_path) {
   notcurses_render(nc);
   sleep(1);
   ncplane_options end_score_opts = {
-      .y = 20, .x = 40, .rows = 19, .cols = 70, .name = "score", .flags = 0};
+      .y = 20, .x = 50, .rows = 19, .cols = 70, .name = "score", .flags = 0};
   std = notcurses_stdplane(nc);
   score_plane = ncplane_create(std, &end_score_opts);
     // Update percentage display (clamped 0..100), integer percent
@@ -701,7 +701,7 @@ int game_run(const char* osu_path, const char* ogg_path) {
     if (score_plane) {
       draw_big_text(score_plane, buf, 255, 255, 255);
     }
-  end_score_opts.x = 100;
+  end_score_opts.x = 90;
   end_score_opts.y = 5;
   score_plane = ncplane_create(std, &end_score_opts);
   snprintf(buf, sizeof(buf), "%d", S);
