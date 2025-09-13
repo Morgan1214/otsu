@@ -291,6 +291,15 @@ static const char* GLYPH_SPACE[7] = {
   "     ",
   "     ",
 };
+static const char* GLYPH_DOT[7] = {
+  "     ",
+  "     ",
+  "     ",
+  "     ",
+  "     ",
+  "  #  ",
+  "     ",
+};
 
 typedef struct { const char** rows; int w; } Glyph;
 
@@ -307,6 +316,7 @@ static Glyph glyph_for(char c) {
     case '8': return (Glyph){GLYPH_8, 5};
     case '9': return (Glyph){GLYPH_9, 5};
     case '%': return (Glyph){GLYPH_PCT, 5};
+    case '.': return (Glyph){GLYPH_DOT, 5};
     default:  return (Glyph){GLYPH_SPACE, 5};
   }
 }
@@ -320,13 +330,13 @@ static int text_pixel_width(const char* s) {
   return w;
 }
 
-static void draw_big_text(struct ncplane* p, const char* s) {
+static void draw_big_text(struct ncplane* p, const char* s, int r, int g, int b) {
   if (!p || !s) return;
   // Clear the plane
   ncplane_erase(p);
   // Colors
   uint64_t chan = 0;
-  ncchannels_set_fg_rgb8(&chan, 255, 255, 255);
+  ncchannels_set_fg_rgb8(&chan, r, g, b);
   ncchannels_set_bg_rgb8(&chan, 0, 0, 0);
   ncplane_set_channels(p, chan);
 
@@ -625,13 +635,13 @@ int game_run(const char* osu_path, const char* ogg_path) {
     if (ipercentage > 100) ipercentage = 100; if (ipercentage < 0) ipercentage = 0;
     snprintf(buf, sizeof(buf), "%d%%", ipercentage);
     if (score_plane) {
-      draw_big_text(score_plane, buf);
+      draw_big_text(score_plane, buf, 255, 255, 255);
     }
 
     for (int i = 3; i < rows - 7; i++) {
       if ((double)i / (double)(rows - 8) <= elapsed / max_score)
-        ncplane_putegc_yx(progbar, rows - 7 - i, 1, "█", NULL);
-        ncplane_putegc_yx(progbar, rows - 7 - i, 2, "█", NULL);
+        {ncplane_putegc_yx(progbar, rows - 7 - i, 1, "█", NULL);
+        ncplane_putegc_yx(progbar, rows - 7 - i, 2, "█", NULL);}
     }
 
     // ---- Update all entities ----
@@ -661,6 +671,10 @@ int game_run(const char* osu_path, const char* ogg_path) {
         ncchannels_set_bg_rgb8(&track[i].trackchan, r, g, b);
     }
 
+    if (elapsed >= max_score - 1) {
+      running = false;
+    }
+
     // ---- Render ----
     notcurses_render(nc);
 
@@ -668,8 +682,49 @@ int game_run(const char* osu_path, const char* ogg_path) {
     clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &now, NULL);
   }
 
+  Mix_HaltMusic();
+  notcurses_drop_planes(nc);
+  notcurses_render(nc);
+  sleep(1);
+  ncplane_options end_score_opts = {
+      .y = 20, .x = 40, .rows = 19, .cols = 70, .name = "score", .flags = 0};
+  std = notcurses_stdplane(nc);
+  score_plane = ncplane_create(std, &end_score_opts);
+    // Update percentage display (clamped 0..100), integer percent
+    percentage = (double)score / max_score * (double)100;
+    if (percentage < 0) percentage = 0; if (percentage > 100) percentage = 100;
+    int ipercentage = (int)(percentage);
+    char buf[8];
+    if (ipercentage > 100) ipercentage = 100; if (ipercentage < 0) ipercentage = 0;
+    int rndpercentage = ((int)(percentage * 100)) % 100; 
+    snprintf(buf, sizeof(buf), "%d.%2d%%", ipercentage, rndpercentage);
+    if (score_plane) {
+      draw_big_text(score_plane, buf, 255, 255, 255);
+    }
+  end_score_opts.x = 100;
+  end_score_opts.y = 5;
+  score_plane = ncplane_create(std, &end_score_opts);
+  snprintf(buf, sizeof(buf), "%d", S);
+  draw_big_text(score_plane, buf, 200, 200, 100);
+
+  end_score_opts.y = 15;
+  score_plane = ncplane_create(std, &end_score_opts);
+  snprintf(buf, sizeof(buf), "%d", A);
+  draw_big_text(score_plane, buf, 100, 100, 200);
+
+  end_score_opts.y = 25;
+  score_plane = ncplane_create(std, &end_score_opts);
+  snprintf(buf, sizeof(buf), "%d", B);
+  draw_big_text(score_plane, buf, 100, 200, 100);
+
+  end_score_opts.y = 35;
+  score_plane = ncplane_create(std, &end_score_opts);
+  snprintf(buf, sizeof(buf), "%d", F);
+  draw_big_text(score_plane, buf, 150, 75, 75);
+
+  notcurses_render(nc);
+  notcurses_get_blocking(nc, NULL);
   // Cleanup
-  for (size_t i = 0; i < ents.len; i++) destroy_entity(&ents.data[i]);
   free(ents.data);
   notcurses_stop(nc);
 
